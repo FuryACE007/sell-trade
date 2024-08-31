@@ -1,0 +1,82 @@
+import { Component, OnInit } from '@angular/core'
+import { FormBuilder, FormGroup, Validators } from '@angular/forms'
+import { Instrument } from '../models/instrument'
+import { Trade } from '../models/trade'
+import { FmtsService } from '../services/fmts.service'
+import { Client } from '../models/client'
+import { MatSnackBar } from '@angular/material/snack-bar'
+import { InstrumentService } from '../services/instrument.service'
+import { ClientService } from '../services/client.service'
+import { Order } from '../models/order'
+
+@Component({
+  selector: 'app-sell-trade',
+  templateUrl: './sell-trade.component.html',
+  styleUrls: ['./sell-trade.component.css'],
+})
+export class SellTradeComponent implements OnInit {
+  sellForm: FormGroup
+  client: Client = new Client('', 0)
+  portfolioInstruments: Instrument[] = []
+  errorMessage: string = ''
+
+  constructor(
+    private formBuilder: FormBuilder,
+    private fmtsService: FmtsService,
+    private snackBar: MatSnackBar,
+    private instrumentService: InstrumentService,
+    private clientService: ClientService,
+  ) {
+    this.sellForm = this.formBuilder.group({
+      instrumentId: ['', Validators.required],
+      quantity: ['', [Validators.required, Validators.min(1)]],
+      targetPrice: ['', [Validators.required, Validators.min(0)]],
+    })
+  }
+
+  ngOnInit() {
+    this.loadClientData()
+    this.loadPortfolioInstruments()
+  }
+
+  loadClientData() {
+    this.clientService.getClientData().subscribe((clientData: Client) => {
+      this.client = clientData
+    })
+  }
+
+  loadPortfolioInstruments() {
+    this.instrumentService
+      .getInstruments()
+      .subscribe((instrumentData: Instrument[]) => {
+        this.portfolioInstruments = instrumentData
+      })
+  }
+
+  onSubmit() {
+    if (this.sellForm.valid) {
+      const order = new Order(
+        this.sellForm.value.instrumentId,
+        this.sellForm.value.quantity,
+        this.sellForm.value.targetPrice,
+        'S',
+        this.client.id,
+      )
+
+      this.fmtsService.executeTrade(order).subscribe(
+        (trade) => {
+          console.log('Trade executed:', trade)
+          this.snackBar.open('Trade executed successfully', 'Close', {
+            duration: 3000,
+          })
+        },
+        (error) => {
+          console.error('Trade execution failed: ', error)
+          this.snackBar.open('Trade execution failed', 'Close', {
+            duration: 3000,
+          })
+        },
+      )
+    }
+  }
+}
