@@ -6,37 +6,26 @@
       <form [formGroup]="sellForm" (ngSubmit)="onSubmit()">
         <mat-form-field appearance="fill">
           <mat-label>Instrument:</mat-label>
-          <mat-select formControlName="instrumentId" required>
+          <mat-select formControlName="instrumentId" (selectionChange)="onInstrumentSelected($event)">
             <mat-option value="">Select an instrument</mat-option>
-            <mat-option *ngFor="let instrument of portfolioInstruments" [value]="instrument.id">
-              {{ instrument.name }} (Quantity: {{ instrument.quantity }})
+            <mat-option *ngFor="let instrument of portfolioInstruments" [value]="instrument.instrumentId">
+              {{ instrument.description }} (Quantity: {{ instrument.quantity }})
             </mat-option>
           </mat-select>
-          <mat-error *ngIf="sellForm.get('instrumentId').hasError('required')">
-            Please select an instrument
-          </mat-error>
         </mat-form-field>
   
         <mat-form-field appearance="fill">
           <mat-label>Quantity:</mat-label>
-          <input matInput formControlName="quantity" type="number" required min="1">
-          <mat-error *ngIf="sellForm.get('quantity').hasError('required')">
-            Quantity is required
-          </mat-error>
-          <mat-error *ngIf="sellForm.get('quantity').hasError('min')">
-            Minimum quantity is 1
-          </mat-error>
+          <input matInput formControlName="quantity" type="number"
+                 [min]="selectedInstrument?.minQuantity || 1" 
+                 [max]="selectedInstrument?.maxQuantity || Number.MAX_SAFE_INTEGER">
+          <mat-hint>Minimum: {{ selectedInstrument?.minQuantity || 1 }}, 
+                    Maximum: {{ selectedInstrument?.maxQuantity || 'No limit' }}</mat-hint>
         </mat-form-field>
   
         <mat-form-field appearance="fill">
           <mat-label>Target Price:</mat-label>
-          <input matInput formControlName="targetPrice" type="number" required min="0">
-          <mat-error *ngIf="sellForm.get('targetPrice').hasError('required')">
-            Target price is required
-          </mat-error>
-          <mat-error *ngIf="sellForm.get('targetPrice').hasError('min')">
-            Target price must be greater than zero
-          </mat-error>
+          <input matInput formControlName="targetPrice" type="number">
         </mat-form-field>
   
         <button mat-raised-button color="primary" type="submit" [disabled]="!sellForm.valid">Execute Sell Trade</button>
