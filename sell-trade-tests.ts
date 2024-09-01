@@ -1,38 +1,66 @@
-// sell-trade.component.spec.ts
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ReactiveFormsModule } from '@angular/forms';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { of, throwError } from 'rxjs';
 import { SellTradeComponent } from './sell-trade.component';
-import { TradeService } from './trade.service';
+import { FmtsService } from '../services/fmts.service';
+import { InstrumentService } from '../services/instrument.service';
+import { ClientService } from '../services/client.service';
+import { MatCardModule } from '@angular/material/card';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatSelectModule } from '@angular/material/select';
+import { MatInputModule } from '@angular/material/input';
+import { MatButtonModule } from '@angular/material/button';
 
 describe('SellTradeComponent', () => {
   let component: SellTradeComponent;
   let fixture: ComponentFixture<SellTradeComponent>;
-  let tradeServiceSpy: jasmine.SpyObj<TradeService>;
+  let fmtsServiceSpy: jasmine.SpyObj<FmtsService>;
+  let instrumentServiceSpy: jasmine.SpyObj<InstrumentService>;
+  let clientServiceSpy: jasmine.SpyObj<ClientService>;
+  let snackBarSpy: jasmine.SpyObj<MatSnackBar>;
 
   beforeEach(async () => {
-    const spy = jasmine.createSpyObj('TradeService', ['getPortfolioInstruments', 'executeSellTrade', 'getClientId', 'getPortfolioId']);
+    const fmtsService = jasmine.createSpyObj('FmtsService', ['executeTrade']);
+    const instrumentService = jasmine.createSpyObj('InstrumentService', ['getInstruments']);
+    const clientService = jasmine.createSpyObj('ClientService', ['getClientData']);
+    const snackBar = jasmine.createSpyObj('MatSnackBar', ['open']);
 
     await TestBed.configureTestingModule({
       declarations: [ SellTradeComponent ],
-      imports: [ ReactiveFormsModule ],
+      imports: [
+        ReactiveFormsModule,
+        NoopAnimationsModule,
+        MatCardModule,
+        MatFormFieldModule,
+        MatSelectModule,
+        MatInputModule,
+        MatButtonModule
+      ],
       providers: [
-        { provide: TradeService, useValue: spy }
+        { provide: FmtsService, useValue: fmtsService },
+        { provide: InstrumentService, useValue: instrumentService },
+        { provide: ClientService, useValue: clientService },
+        { provide: MatSnackBar, useValue: snackBar }
       ]
     }).compileComponents();
 
-    tradeServiceSpy = TestBed.inject(TradeService) as jasmine.SpyObj<TradeService>;
+    fmtsServiceSpy = TestBed.inject(FmtsService) as jasmine.SpyObj<FmtsService>;
+    instrumentServiceSpy = TestBed.inject(InstrumentService) as jasmine.SpyObj<InstrumentService>;
+    clientServiceSpy = TestBed.inject(ClientService) as jasmine.SpyObj<ClientService>;
+    snackBarSpy = TestBed.inject(MatSnackBar) as jasmine.SpyObj<MatSnackBar>;
   });
 
   beforeEach(() => {
     fixture = TestBed.createComponent(SellTradeComponent);
     component = fixture.componentInstance;
-    tradeServiceSpy.getPortfolioInstruments.and.returnValue(of([
-      { id: '1', name: 'AAPL', quantity: 100 },
-      { id: '2', name: 'GOOGL', quantity: 50 }
+    
+    clientServiceSpy.getClientData.and.returnValue(of({ id: '1', cash: 1000 }));
+    instrumentServiceSpy.getInstruments.and.returnValue(of([
+      { instrumentId: '1', description: 'Test Instrument' }
     ]));
-    tradeServiceSpy.getClientId.and.returnValue('mock-client-id');
-    tradeServiceSpy.getPortfolioId.and.returnValue('mock-portfolio-id');
+    
     fixture.detectChanges();
   });
 
@@ -40,46 +68,71 @@ describe('SellTradeComponent', () => {
     expect(component).toBeTruthy();
   });
 
+  it('should load client data on init', () => {
+    expect(clientServiceSpy.getClientData).toHaveBeenCalled();
+    expect(component.client).toEqual({ id: '1', cash: 1000 });
+  });
+
   it('should load portfolio instruments on init', () => {
-    expect(component.portfolioInstruments.length).toBe(2);
-    expect(component.portfolioInstruments[0].name).toBe('AAPL');
+    expect(instrumentServiceSpy.getInstruments).toHaveBeenCalled();
+    expect(component.portfolioInstruments).toEqual([
+      { instrumentId: '1', description: 'Test Instrument' }
+    ]);
   });
 
-  it('should execute sell trade successfully', () => {
-    const mockTradeResult = { tradeId: 'mock-trade-1', executionPrice: 150, cashValue: 15000 };
-    tradeServiceSpy.executeSellTrade.and.returnValue(of(mockTradeResult));
+  it('should execute trade when form is valid', () => {
+    const trade = { cashValue: 100 };
+    fmtsServiceSpy.executeTrade.and.returnValue(of(trade));
 
     component.sellForm.setValue({
       instrumentId: '1',
-      quantity: 100,
-      targetPrice: 150
+      quantity: 10,
+      targetPrice: 50
     });
 
     component.onSubmit();
 
-    expect(tradeServiceSpy.executeSellTrade).toHaveBeenCalledWith({
-      instrumentId: '1',
-      quantity: 100,
-      targetPrice: 150,
-      direction: 'S',
-      clientId: 'mock-client-id',
-      portfolioId: 'mock-portfolio-id'
-    });
-    expect(component.errorMessage).toBe('');
+    expect(fmtsServiceSpy.executeTrade).toHaveBeenCalled();
+    expect(snackBarSpy.open).toHaveBeenCalledWith('Trade executed successfully', 'Close', { duration: 3000 });
+    expect(component.client?.cash).toBe(1100);
+    expect(component.sellForm.value).toEqual({ instrumentId: null, quantity: null, targetPrice: null });
   });
 
-  it('should handle error when trying to sell more than owned', () => {
-    tradeServiceSpy.executeSellTrade.and.returnValue(throwError({ message: 'Insufficient quantity to sell' }));
+  it('should show error when trade execution fails', () => {
+    fmtsServiceSpy.executeTrade.and.returnValue(throwError('Error'));
 
     component.sellForm.setValue({
       instrumentId: '1',
-      quantity: 150,
-      targetPrice: 150
+      quantity: 10,
+      targetPrice: 50
     });
 
     component.onSubmit();
 
-    expect(tradeServiceSpy.executeSellTrade).toHaveBeenCalled();
-    expect(component.errorMessage).toBe('Insufficient quantity to sell');
+    expect(fmtsServiceSpy.executeTrade).toHaveBeenCalled();
+    expect(snackBarSpy.open).toHaveBeenCalledWith('Trade execution failed', 'Close', { duration: 3000 });
+  });
+
+  it('should not execute trade when form is invalid', () => {
+    component.onSubmit();
+
+    expect(fmtsServiceSpy.executeTrade).not.toHaveBeenCalled();
+  });
+
+  it('should reset form validation state after successful trade', () => {
+    const trade = { cashValue: 100 };
+    fmtsServiceSpy.executeTrade.and.returnValue(of(trade));
+
+    component.sellForm.setValue({
+      instrumentId: '1',
+      quantity: 10,
+      targetPrice: 50
+    });
+
+    component.onSubmit();
+
+    expect(component.sellForm.get('instrumentId')?.errors).toBeNull();
+    expect(component.sellForm.get('quantity')?.errors).toBeNull();
+    expect(component.sellForm.get('targetPrice')?.errors).toBeNull();
   });
 });
