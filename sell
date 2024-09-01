@@ -1,18 +1,18 @@
-import { Component, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { Instrument } from '../models/instrument';
-import { Trade } from '../models/trade';
-import { FmtsService } from '../services/fmts.service';
-import { Client } from '../models/client';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { InstrumentService } from '../services/instrument.service';
-import { ClientService } from '../services/client.service';
-import { Order } from '../models/order';
+import { Component, OnInit } from "@angular/core";
+import { FormBuilder, FormGroup, Validators } from "@angular/forms";
+import { Instrument } from "../models/instrument";
+import { Trade } from "../models/trade";
+import { FmtsService } from "../services/fmts.service";
+import { Client } from "../models/client";
+import { MatSnackBar } from "@angular/material/snack-bar";
+import { InstrumentService } from "../services/instrument.service";
+import { ClientService } from "../services/client.service";
+import { Order } from "../models/order";
 
 @Component({
-  selector: 'app-sell-trade',
-  templateUrl: './sell-trade.component.html',
-  styleUrls: ['./sell-trade.component.css'],
+  selector: "app-sell-trade",
+  templateUrl: "./sell-trade.component.html",
+  styleUrls: ["./sell-trade.component.css"],
 })
 export class SellTradeComponent implements OnInit {
   sellForm: FormGroup;
@@ -24,12 +24,12 @@ export class SellTradeComponent implements OnInit {
     private fmtsService: FmtsService,
     private snackBar: MatSnackBar,
     private instrumentService: InstrumentService,
-    private clientService: ClientService,
+    private clientService: ClientService
   ) {
     this.sellForm = this.formBuilder.group({
-      instrumentId: ['', Validators.required],
-      quantity: ['', [Validators.required, Validators.min(1)]],
-      targetPrice: ['', [Validators.required, Validators.min(0)]],
+      instrumentId: ["", Validators.required],
+      quantity: ["", [Validators.required, Validators.min(1)]],
+      targetPrice: ["", [Validators.required, Validators.min(0)]],
     });
   }
 
@@ -44,8 +44,8 @@ export class SellTradeComponent implements OnInit {
         this.client = clientData;
       },
       (error) => {
-        console.error('Error loading client data:', error);
-        this.snackBar.open('Failed to load client data', 'Close', {
+        console.error("Error loading client data:", error);
+        this.snackBar.open("Failed to load client data", "Close", {
           duration: 3000,
         });
       }
@@ -58,8 +58,8 @@ export class SellTradeComponent implements OnInit {
         this.portfolioInstruments = instrumentData;
       },
       (error) => {
-        console.error('Error loading instruments:', error);
-        this.snackBar.open('Failed to load instruments', 'Close', {
+        console.error("Error loading instruments:", error);
+        this.snackBar.open("Failed to load instruments", "Close", {
           duration: 3000,
         });
       }
@@ -72,25 +72,31 @@ export class SellTradeComponent implements OnInit {
         this.sellForm.value.instrumentId,
         this.sellForm.value.quantity,
         this.sellForm.value.targetPrice,
-        'S',
-        this.client.id,
+        "S",
+        this.client.id
       );
 
       this.fmtsService.executeTrade(order).subscribe(
         (trade: Trade) => {
-          console.log('Trade executed:', trade);
-          this.snackBar.open('Trade executed successfully', 'Close', {
+          console.log("Trade executed:", trade);
+          this.snackBar.open("Trade executed successfully", "Close", {
             duration: 3000,
           });
           this.updateClientCash(trade);
           this.sellForm.reset();
-        },
-        (error) => {
-          console.error('Trade execution failed: ', error);
-          this.snackBar.open('Trade execution failed', 'Close', {
-            duration: 3000,
+
+          // Reset form validation state
+          Object.keys(this.sellForm.controls).forEach((key) => {
+            const control = this.sellForm.get(key);
+            control?.setErrors(null);
           });
         },
+        (error) => {
+          console.error("Trade execution failed: ", error);
+          this.snackBar.open("Trade execution failed", "Close", {
+            duration: 3000,
+          });
+        }
       );
     }
   }
