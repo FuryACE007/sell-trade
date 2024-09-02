@@ -21,42 +21,48 @@ describe('ETF List', () => {
   
       // Verify that there are ETFs listed in the table
       cy.get('tbody tr').should('have.length.gt', 0);
-  
-      // Store the first ETF's fund name for later comparison
-      cy.get('tbody tr').first().find('td').eq(0).invoke('text').as('firstEtfName');
     });
   
     it('should change the order of ETFs when clicking different buttons', () => {
-      // Click the "ER" button
-      cy.contains('button', 'ER').click();
+      // Store the initial order of ETFs
+      cy.get('tbody tr').then($initialRows => {
+        const initialOrder = $initialRows.map((_, el) => el.children[0].innerText).get();
   
-      // Verify that the list has changed
-      cy.get('@firstEtfName').then((initialName) => {
-        cy.get('tbody tr').first().find('td').eq(0).should('not.have.text', initialName);
-      });
+        // Click the "ER" button
+        cy.contains('button', 'ER').click();
   
-      // Click the "AUM Bill" button
-      cy.contains('button', 'AUM Bill').click();
+        // Verify that the list has changed
+        cy.get('tbody tr').then($newRows => {
+          const newOrder = $newRows.map((_, el) => el.children[0].innerText).get();
+          expect(newOrder).not.to.deep.equal(initialOrder);
+        });
   
-      // Verify that the list has changed again
-      cy.get('@firstEtfName').then((initialName) => {
-        cy.get('tbody tr').first().find('td').eq(0).should('not.have.text', initialName);
-      });
+        // Click the "AUM Bill" button
+        cy.contains('button', 'AUM Bill').click();
   
-      // Click the "3M TR" button
-      cy.contains('button', '3M TR').click();
+        // Verify that the list has changed again
+        cy.get('tbody tr').then($newRows => {
+          const newOrder = $newRows.map((_, el) => el.children[0].innerText).get();
+          expect(newOrder).not.to.deep.equal(initialOrder);
+        });
   
-      // Verify that the list has changed once more
-      cy.get('@firstEtfName').then((initialName) => {
-        cy.get('tbody tr').first().find('td').eq(0).should('not.have.text', initialName);
-      });
+        // Click the "3M TR" button
+        cy.contains('button', '3M TR').click();
   
-      // Click the "All" button to return to the initial state
-      cy.contains('button', 'All').click();
+        // Verify that the list has changed once more
+        cy.get('tbody tr').then($newRows => {
+          const newOrder = $newRows.map((_, el) => el.children[0].innerText).get();
+          expect(newOrder).not.to.deep.equal(initialOrder);
+        });
   
-      // Verify that we're back to the initial state
-      cy.get('@firstEtfName').then((initialName) => {
-        cy.get('tbody tr').first().find('td').eq(0).should('have.text', initialName);
+        // Click the "All" button to return to the initial state
+        cy.contains('button', 'All').click();
+  
+        // Verify that we're back to the initial state
+        cy.get('tbody tr').then($newRows => {
+          const newOrder = $newRows.map((_, el) => el.children[0].innerText).get();
+          expect(newOrder).to.deep.equal(initialOrder);
+        });
       });
     });
   });
